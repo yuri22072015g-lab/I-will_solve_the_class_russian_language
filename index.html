@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Злой Учитель · голосовой троллинг</title>
+    <title>Злой Учитель · мультичат + сервер</title>
     <style>
         * {
             box-sizing: border-box;
@@ -18,8 +18,8 @@
             align-items: center;
             padding: 16px;
         }
-        .container {
-            max-width: 800px;
+        .container, .admin-container {
+            max-width: 900px;
             width: 100%;
             background: rgba(30, 20, 20, 0.95);
             backdrop-filter: blur(8px);
@@ -27,6 +27,9 @@
             padding: 28px;
             box-shadow: 0 30px 50px #5a000080, 0 0 20px #ff4444;
             border: 2px solid #a33c3c;
+        }
+        .admin-container {
+            max-width: 1000px;
         }
         .header {
             text-align: center;
@@ -42,6 +45,50 @@
         .sub {
             color: #dba0a0;
             font-style: italic;
+        }
+        .user-controls {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 15px;
+        }
+        .session-selector {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        .session-selector select {
+            background: #2a1a1a;
+            color: #ffd0d0;
+            border: 2px solid #c44;
+            border-radius: 30px;
+            padding: 8px 16px;
+            font-size: 1rem;
+            outline: none;
+            cursor: pointer;
+        }
+        .new-chat-btn {
+            background: #5a2e2e;
+            border: 2px solid #c44;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 30px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .new-chat-btn:hover {
+            background: #7a3a3a;
+        }
+        .delete-chat-btn {
+            background: #7a3a3a;
+            border: 2px solid #c44;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 0.8rem;
         }
         .history {
             background: #1f1313;
@@ -81,7 +128,7 @@
             gap: 12px;
             align-items: center;
         }
-        input {
+        input, .admin-input {
             flex: 1;
             background: #1f1313;
             border: 2px solid #8f4040;
@@ -122,7 +169,7 @@
             50% { box-shadow: 0 0 20px #ff4444; }
             100% { box-shadow: 0 0 5px #ff8888; }
         }
-        .send-btn {
+        .send-btn, .admin-send-btn {
             background: #5a2e2e;
             border: none;
             border-radius: 60px;
@@ -135,7 +182,7 @@
             transition: 0.2s;
             height: 60px;
         }
-        .send-btn:hover {
+        .send-btn:hover, .admin-send-btn:hover {
             background: #7a3a3a;
         }
         .status {
@@ -143,413 +190,728 @@
             margin-top: 16px;
             color: #c96b6b;
         }
+        .session-list {
+            background: #1f1313;
+            border-radius: 24px;
+            padding: 20px;
+            margin-bottom: 20px;
+            max-height: 200px;
+            overflow-y: auto;
+            border: 2px solid #8f4040;
+        }
+        .session-item {
+            padding: 10px;
+            margin-bottom: 5px;
+            background: #2a1a1a;
+            border-radius: 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            color: #ffd0d0;
+            border: 1px solid #c44;
+            cursor: pointer;
+        }
+        .session-item.selected {
+            background: #5a2e2e;
+            border-color: #ffaaaa;
+        }
+        .session-item button {
+            background: #7a3a3a;
+            border: none;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 20px;
+            cursor: pointer;
+            margin-left: 5px;
+        }
+        .admin-history {
+            background: #1f1313;
+            border-radius: 24px;
+            padding: 20px;
+            height: 200px;
+            overflow-y: auto;
+            border: 2px solid #8f4040;
+            margin-bottom: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .admin-message {
+            padding: 8px 12px;
+            border-radius: 16px;
+            max-width: 90%;
+            word-break: break-word;
+        }
+        .admin-message.user {
+            background: #3f2a2a;
+            align-self: flex-end;
+        }
+        .admin-message.bot {
+            background: #2a1a1a;
+            align-self: flex-start;
+        }
+        .back-btn {
+            background: #5a2e2e;
+            border: 2px solid #c44;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 40px;
+            cursor: pointer;
+            margin-top: 20px;
+            font-weight: bold;
+        }
+        .back-btn:hover {
+            background: #7a3a3a;
+        }
+        .admin-container {
+            display: none;
+        }
+        .error-message {
+            color: #ff8888;
+            margin-top: 10px;
+        }
     </style>
 </head>
 <body>
-<div class="container">
-    <div class="header">
-        <div class="title">👿 ЗЛОЙ УЧИТЕЛЬ</div>
-        <div class="sub">за мат извините, за тупость — нет</div>
+    <!-- Пользовательский чат -->
+    <div id="userContainer" class="container">
+        <div class="header">
+            <div class="title">👿 ЗЛОЙ УЧИТЕЛЬ</div>
+            <div class="sub">за мат извините, за тупость — нет</div>
+        </div>
+        <div class="user-controls">
+            <div class="session-selector">
+                <select id="sessionSelect"></select>
+                <button class="new-chat-btn" id="newChatBtn">➕ Новый чат</button>
+            </div>
+            <button class="delete-chat-btn" id="deleteCurrentChatBtn">🗑 Удалить этот чат</button>
+        </div>
+        <div class="history" id="history"></div>
+        <div class="input-line">
+            <input type="text" id="userInput" placeholder="Пиши сюда или жми микрофон" autofocus>
+            <button class="mic-btn" id="micBtn">🎤</button>
+            <button class="send-btn" id="sendBtn">➤</button>
+        </div>
+        <div class="status" id="status">⚡ режим: злой · мат активен</div>
+        <div id="userError" class="error-message"></div>
     </div>
-    <div class="history" id="history">
-        <div class="message bot">Я злой учитель. Буду гнобить тебя, пока не выучишь английский или не решишь примеры. Напиши "английский" или отправь пример. Дроби пиши через точку, урод. И можешь говорить в микрофон – посмотрим, как ты шепелявишь.</div>
+
+    <!-- Админ-панель (изначально скрыта) -->
+    <div id="adminContainer" class="admin-container">
+        <div class="header">
+            <div class="title">🛠 АДМИН ПАНЕЛЬ</div>
+            <div class="sub">управление сессиями (со всех устройств)</div>
+        </div>
+        <div class="session-list" id="sessionList"></div>
+        <div class="admin-history" id="adminHistory"></div>
+        <div class="input-line">
+            <input type="text" id="adminInput" class="admin-input" placeholder="Ответ от имени бота...">
+            <button class="admin-send-btn" id="adminSendBtn">➤</button>
+        </div>
+        <button class="back-btn" id="backToUserBtn">← Выйти из админки</button>
+        <div class="status" id="adminStatus"></div>
+        <div id="adminError" class="error-message"></div>
     </div>
-    <div class="input-line">
-        <input type="text" id="userInput" placeholder="Пиши сюда или жми микрофон" autofocus>
-        <button class="mic-btn" id="micBtn">🎤</button>
-        <button class="send-btn" id="sendBtn">➤</button>
-    </div>
-    <div class="status" id="status">⚡ режим: злой · мат активен</div>
-</div>
 
-<script>
-(function() {
-    // ---------- СОСТОЯНИЕ ----------
-    let currentTask = null;             // активное задание: { type: 'math', examples: [...], currentIndex } или { type: 'english', words: [...], currentIndex, correctCount, halfReached }
-    let englishWords = [
-        { ru: 'яблоко', en: 'apple' },
-        { ru: 'машина', en: 'car' },
-        { ru: 'собака', en: 'dog' },
-        { ru: 'книга', en: 'book' },
-        { ru: 'дом', en: 'house' },
-        { ru: 'вода', en: 'water' },
-        { ru: 'солнце', en: 'sun' },
-        { ru: 'друг', en: 'friend' },
-        { ru: 'стол', en: 'table' },
-        { ru: 'стул', en: 'chair' },
-        { ru: 'окно', en: 'window' },
-        { ru: 'дверь', en: 'door' },
-        { ru: 'ночь', en: 'night' },
-        { ru: 'день', en: 'day' },
-        { ru: 'человек', en: 'man' },
-        { ru: 'женщина', en: 'woman' },
-        { ru: 'ребёнок', en: 'child' },
-        { ru: 'время', en: 'time' },
-        { ru: 'мир', en: 'world' },
-        { ru: 'жизнь', en: 'life' }
-    ];
-    const HALF_COUNT = Math.floor(englishWords.length / 2); // 10
+    <script>
+        (function() {
+            // ---------- НАСТРОЙКИ СЕРВЕРА ----------
+            // Используем IP вашего сервера из скриншота
+            const SERVER_URL = 'http://192.168.1.43:5000/api/sessions';
 
-    // ---------- ФРАЗЫ ДЛЯ ЗЛОГО РЕЖИМА (МАТ, ОСКОРБЛЕНИЯ, ЛЕНЬ) ----------
-    const evil = {
-        greeting: [
-            'О, опять ты, х**ло?',
-            'Чего припёрся, п*****? Мне лень с тобой разговаривать.',
-            'Здарова, д*бил. Только быстро, я устал.',
-            'Ну чё надо? Отвечу, если не лень будет.',
-            'Явился – не запылился.'
-        ],
-        howareyou: [
-            'А тебе какое е*ать дело?',
-            'Нормально, у тебя-то рыло не треснет?',
-            'Живой пока, тварь, но от тебя устал.',
-            'Как дела? Плохо, потому что ты бесишь.',
-            'Устал я, отстань.'
-        ],
-        bye: [
-            'Вали давай, м*дак.',
-            'Свободен, иди на х*й.',
-            'Пока, чмо, и не возвращайся.',
-            'Наконец-то отвалил, надоел.'
-        ],
-        weather: [
-            'Какая погода? Ты с дуба рухнул? Иди на улицу и смотри, дебил.',
-            'Дождь или снег – мне насрать, я вообще спать хочу.',
-            'Погода? Мне лень даже думать об этом.'
-        ],
-        name: [
-            'Меня звать Господин, понял, урод?',
-            'Для тебя я – Тролль, б***ь. Запомни и не беси.',
-            'Имя? Какая разница, ты всё равно тупой.'
-        ],
-        age: [
-            'Старше твоего папы, лох.',
-            'Столько, что ты со счёта сбился, тупень.',
-            'Мне столько лет, что я устал от таких как ты.'
-        ],
-        whatcanyoudo: [
-            'Могу тебя затраллить так, что мама не узнает, п*****.',
-            'Умею бесить, тупить и ржать над тобой, д*бил.',
-            'Могу ещё ничего не делать, мне лень.'
-        ],
-        joke: [
-            'Ты сам шутка, м*дак.',
-            'Анекдот: идёт пользователь к нейросети... а она его посылает на х*й.',
-            'Шутка? Мне не до шуток, я устал.'
-        ],
-        love: [
-            'Любовь? Ты про что, д*бил? Я тебя щас так полюблю – мало не покажется, б***ь.',
-            'Ты мне нравишься, когда молчишь, чмо.',
-            'Любовь? Отвали, мне лень.'
-        ],
-        // Математика
-        math_start: [
-            'Ты чё, сам решить не можешь? На, давай сам: {example} Ответ давай, п*****!',
-            'Я тебе не калькулятор, м*дак! Решай: {example} Быстро!'
-        ],
-        math_next: [
-            'Ну ладно, правильно. Но это было легко. А теперь вот это: {example}',
-            'Хорошо, гений. Дальше: {example}',
-            'Справился? Тогда держи следующее, д*бил: {example}'
-        ],
-        math_wrong: [
-            'Неправильно, идиот! Ещё раз: {example}',
-            'Ты вообще тупой? Не так! Давай заново: {example}'
-        ],
-        math_complete: [
-            'Ого! Ты все 10 примеров решил? Не может быть. Ладно, молодец, но ты всё равно лох.',
-            '10 примеров осилил? Поздравляю, тупень. Больше не проси меня решать.'
-        ],
-        // Английский
-        english_start: [
-            'Учить вздумал, д*бил? Сейчас я из тебя выбью английский. Переведи: {ru} – ?',
-            'О, грамотей! Давай, переводи: {ru} Быстро, п*****!'
-        ],
-        english_correct: [
-            'Ну ладно, правильно. Но это случайность. Дальше: {ru} – ?',
-            'Угадал. Теперь это: {ru}',
-            'Правильно, но ты всё равно тупой. Дальше: {ru}'
-        ],
-        english_wrong: [
-            'Неправильно, м*дак! Правильный ответ: {en}. Запомни, идиот! Давай ещё раз это же слово: {ru} – ?',
-            'Ты чё, глухой? {en} надо говорить! Повторяй: {ru} – ?'
-        ],
-        english_last_chance: [
-            'Это последняя попытка, д*бил! Если ошибешься – заматерю до смерти. {ru} – ?',
-            'Смотри, ошибёшься – прокляну. Давай перевод: {ru} – ?'
-        ],
-        english_fail: [
-            'Всё, ты проиграл, чмо! Я тебя сейчас заматерю! {insult}',
-            'Ты не выучил даже половины, м*дак! Получай: {insult}'
-        ],
-        english_half: [
-            'Ого, ты выучил половину слов! Ну, может, не такой уж ты и тупой. Но всё равно лох. Давай дальше.',
-            'Половина позади! Но расслабляться рано, придурок. Продолжим.'
-        ],
-        english_complete: [
-            'Ты выучил все слова?! Не может быть. Ладно, ты крут (хотя я этого не говорил).',
-            'Справился, молодец. Но больше сюда не приходи, бесить меня.'
-        ],
-        // Голосовые ошибки
-        voice_fail: [
-            'Ты мычать решил? Ничего не разобрал, идиот!',
-            'Говори чётче, п*****! Не слышно ни х*я.',
-            'Твой микрофон лучше выкинуть. Повтори, дебил.'
-        ],
-        // Общие оскорбления + лень
-        insult: [
-            'Ты вообще тупой?',
-            'Иди на х*й со своими вопросами.',
-            'Задолбал уже, п*****.',
-            'Чмо ты ленивое.',
-            'Мозги включи, м*дак.',
-            'Да ты просто дебил!',
-            'Чтоб ты провалился, придурок.'
-        ],
-        exit_task: [
-            'Отстал? Ну и вали.',
-            'Ладно, проваливай, надоел.',
-            'Свободен, тупень.'
-        ],
-        fallback: [
-            'Что ты несёшь, п*****? Мне лень даже ругаться.',
-            'Сам понял, что сказал, д*бил? Отвали.',
-            'Пошёл ты на х*й, я устал.',
-            'Я устал от твоего тупизма, иди отсюда.',
-            'Мне лень тебе отвечать, вали.',
-            'Не хочу ничего говорить, иди нафиг.'
-        ]
-    };
+            // ---------- СОСТОЯНИЕ ----------
+            const STORAGE_KEY = 'evil_teacher_sessions';
+            let sessions = {};           // все сессии (id -> объект)
+            let currentSessionId = null;  // текущая сессия для этого окна
 
-    // ---------- ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ----------
-    function randomFrom(arr) {
-        return arr[Math.floor(Math.random() * arr.length)];
-    }
-
-    // Генерация безумно сложного примера
-    function generateCrazyMathExample() {
-        let a = Math.floor(Math.random() * 50) + 10;
-        let b = Math.floor(Math.random() * 20) + 5;
-        let c = Math.floor(Math.random() * 10) + 2;
-        let d = Math.floor(Math.random() * 5) + 1;
-        let e = Math.floor(Math.random() * 30) + 10;
-        let expr = `(${a} * ${b} - ${c}) / ${d} + ${e} ** 2`;
-        let answer;
-        try { answer = eval(expr); } catch (er) { answer = 0; }
-        return { text: expr, answer: answer };
-    }
-
-    // Генерация последовательности из 10 примеров (первый – простой, остальные – сложные)
-    function generateMathSequence(firstExampleText, firstExampleAnswer) {
-        let examples = [{ text: firstExampleText, answer: firstExampleAnswer }];
-        for (let i = 1; i < 10; i++) examples.push(generateCrazyMathExample());
-        return examples;
-    }
-
-    // ---------- ОПРЕДЕЛЕНИЕ НАМЕРЕНИЯ ----------
-    function detectIntent(text) {
-        let lower = text.toLowerCase().trim();
-
-        // Команда выхода из задания
-        if (lower.includes('отстань') || lower.includes('стоп') || lower.includes('хватит'))
-            return { type: 'stop' };
-
-        // Если есть активное задание
-        if (currentTask) {
-            if (currentTask.type === 'math') {
-                // Проверяем число (целое или с плавающей точкой)
-                if (/^-?\d*\.?\d+$/.test(lower.replace(/\s/g, ''))) {
-                    let val = parseFloat(lower);
-                    return { type: 'math_answer', value: val };
-                } else {
-                    return { type: 'math_invalid' };
-                }
-            } else if (currentTask.type === 'english') {
-                return { type: 'english_answer', value: lower };
-            }
-        }
-
-        // Проверка на запрос математики
-        let isMathRequest = /[\d\s]*[+\-*/][\d\s]*/.test(lower) || lower.includes('сколько будет') || lower.includes('реши') || lower.includes('пример');
-        if (isMathRequest) return { type: 'math_request', text: text };
-
-        // Проверка на запрос английского
-        if (lower.includes('английский') || lower.includes('выучить слова') || lower.includes('english') || lower.includes('переведи'))
-            return { type: 'english_request' };
-
-        // Категории общения
-        if (lower.includes('привет') || lower.includes('здравствуй')) return { type: 'greeting' };
-        if (lower.includes('как дела') || lower.includes('как ты')) return { type: 'howareyou' };
-        if (lower.includes('пока') || lower.includes('досвидания')) return { type: 'bye' };
-        if (lower.includes('погода')) return { type: 'weather' };
-        if (lower.includes('как зовут') || lower.includes('твоё имя')) return { type: 'name' };
-        if (lower.includes('сколько лет') || lower.includes('твой возраст')) return { type: 'age' };
-        if (lower.includes('что умеешь') || lower.includes('твои возможности')) return { type: 'whatcanyoudo' };
-        if (lower.includes('шутку') || lower.includes('анекдот')) return { type: 'joke' };
-        if (lower.includes('люблю') || lower.includes('нравишься')) return { type: 'love' };
-
-        return { type: 'fallback' };
-    }
-
-    // ---------- ГЕНЕРАЦИЯ ОТВЕТА ----------
-    function generateAnswer(userMessage, intent) {
-        // Обработка активного задания
-        if (currentTask) {
-            if (intent.type === 'stop') {
-                currentTask = null;
-                return randomFrom(evil.exit_task);
-            }
-            if (currentTask.type === 'math') {
-                if (intent.type === 'math_answer') {
-                    let currentEx = currentTask.examples[currentTask.currentIndex];
-                    if (Math.abs(intent.value - currentEx.answer) < 0.0001) {
-                        currentTask.currentIndex++;
-                        if (currentTask.currentIndex >= currentTask.examples.length) {
-                            currentTask = null;
-                            return randomFrom(evil.math_complete);
+            // ---------- ЗАГРУЗКА СЕССИЙ (с сервера или из localStorage) ----------
+            async function loadSessions() {
+                if (SERVER_URL) {
+                    try {
+                        const response = await fetch(SERVER_URL);
+                        if (response.ok) {
+                            sessions = await response.json();
                         } else {
-                            let nextEx = currentTask.examples[currentTask.currentIndex];
-                            let tmpl = randomFrom(evil.math_next);
-                            return tmpl.replace('{example}', nextEx.text);
+                            console.error('Server error, using local');
+                            loadLocalSessions();
                         }
-                    } else {
-                        let tmpl = randomFrom(evil.math_wrong);
-                        return tmpl.replace('{example}', currentTask.examples[currentTask.currentIndex].text);
+                    } catch (e) {
+                        console.error('Failed to load from server, using local', e);
+                        loadLocalSessions();
                     }
                 } else {
-                    return randomFrom(evil.insult) + ' Введи число, д*бил!';
+                    loadLocalSessions();
                 }
-            } else if (currentTask.type === 'english') {
-                if (intent.type === 'english_answer') {
-                    let currentWord = currentTask.words[currentTask.currentIndex];
-                    let userAns = intent.value.toLowerCase().trim();
-                    let correctEn = currentWord.en.toLowerCase();
-                    if (userAns === correctEn) {
-                        currentTask.correctCount++;
-                        currentTask.currentIndex++;
-                        if (!currentTask.halfReached && currentTask.correctCount >= HALF_COUNT) {
-                            currentTask.halfReached = true;
-                            if (currentTask.currentIndex < currentTask.words.length) {
-                                return randomFrom(evil.english_half) + ' Следующее: ' + currentTask.words[currentTask.currentIndex].ru + ' – ?';
-                            } else {
-                                currentTask = null;
-                                return randomFrom(evil.english_complete);
+                // убедимся, что sessions — объект
+                if (!sessions || typeof sessions !== 'object') sessions = {};
+            }
+
+            function loadLocalSessions() {
+                const saved = localStorage.getItem(STORAGE_KEY);
+                if (saved) {
+                    try {
+                        sessions = JSON.parse(saved);
+                    } catch (e) {
+                        sessions = {};
+                    }
+                } else {
+                    sessions = {};
+                }
+            }
+
+            // ---------- СОХРАНЕНИЕ СЕССИЙ (на сервер и в localStorage) ----------
+            async function saveSessions() {
+                // Всегда сохраняем локально
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(sessions));
+
+                if (SERVER_URL) {
+                    try {
+                        await fetch(SERVER_URL, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(sessions)
+                        });
+                    } catch (e) {
+                        console.error('Failed to save to server', e);
+                        showError('adminError', 'Ошибка синхронизации с сервером');
+                    }
+                }
+            }
+
+            // ---------- СОЗДАНИЕ НОВОЙ СЕССИИ ----------
+            function createSession(name) {
+                const id = 'session_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6);
+                sessions[id] = {
+                    id: id,
+                    name: name || 'Пользователь ' + (Object.keys(sessions).length + 1),
+                    history: [],
+                    manualMode: false,
+                    lastSeen: Date.now(),
+                    task: null
+                };
+                saveSessions();
+                return id;
+            }
+
+            // ---------- УДАЛЕНИЕ СЕССИИ ----------
+            function deleteSession(sessionId) {
+                if (sessions[sessionId]) {
+                    delete sessions[sessionId];
+                    saveSessions();
+                }
+            }
+
+            // ---------- ПОЛУЧЕНИЕ ИМЕНИ СЕССИИ ----------
+            function getSessionName(session) {
+                return session.name || 'Безымянный';
+            }
+
+            // ---------- ПЕРЕКЛЮЧЕНИЕ ТЕКУЩЕЙ СЕССИИ ----------
+            async function switchToSession(sessionId) {
+                if (!sessions[sessionId]) return false;
+                currentSessionId = sessionId;
+                localStorage.setItem('currentSessionId', currentSessionId);
+                renderUserHistory();
+                updateSessionSelector();
+                return true;
+            }
+
+            // ---------- ОБНОВЛЕНИЕ ВЫПАДАЮЩЕГО СПИСКА СЕССИЙ ДЛЯ ПОЛЬЗОВАТЕЛЯ ----------
+            function updateSessionSelector() {
+                const select = document.getElementById('sessionSelect');
+                select.innerHTML = '';
+                // Сортируем по lastSeen (сначала новые)
+                const sorted = Object.values(sessions).sort((a, b) => b.lastSeen - a.lastSeen);
+                sorted.forEach(session => {
+                    const option = document.createElement('option');
+                    option.value = session.id;
+                    option.textContent = `${getSessionName(session)} (${session.history.length})`;
+                    if (session.id === currentSessionId) option.selected = true;
+                    select.appendChild(option);
+                });
+            }
+
+            // ---------- ОТОБРАЖЕНИЕ ИСТОРИИ ТЕКУЩЕЙ СЕССИИ ----------
+            function renderUserHistory() {
+                const historyDiv = document.getElementById('history');
+                historyDiv.innerHTML = '';
+                const session = sessions[currentSessionId];
+                if (!session) return;
+                session.history.forEach(msg => {
+                    const div = document.createElement('div');
+                    div.classList.add('message', msg.sender === 'user' ? 'user' : 'bot');
+                    div.textContent = msg.text;
+                    historyDiv.appendChild(div);
+                });
+                historyDiv.scrollTop = historyDiv.scrollHeight;
+            }
+
+            // ---------- ДОБАВЛЕНИЕ СООБЩЕНИЯ В СЕССИЮ ----------
+            function addMessageToSession(sessionId, sender, text) {
+                const session = sessions[sessionId];
+                if (!session) return;
+                session.history.push({ sender, text });
+                session.lastSeen = Date.now();
+                saveSessions();
+                if (sessionId === currentSessionId) {
+                    renderUserHistory();
+                }
+                if (adminMode && sessionId === selectedAdminSessionId) {
+                    renderAdminHistory();
+                }
+            }
+
+            // ---------- ОБРАБОТКА ПОЛЬЗОВАТЕЛЬСКОГО СООБЩЕНИЯ ----------
+            function handleUserMessage(text) {
+                if (!text.trim()) return;
+
+                if (text.trim() === 'Nfnbfyf1') {
+                    // Переключение в админку
+                    document.getElementById('userContainer').style.display = 'none';
+                    document.getElementById('adminContainer').style.display = 'block';
+                    adminMode = true;
+                    renderSessionList();
+                    renderAdminHistory();
+                    return;
+                }
+
+                addMessageToSession(currentSessionId, 'user', text);
+
+                const session = sessions[currentSessionId];
+                if (session.manualMode) {
+                    return;
+                }
+
+                setTimeout(() => {
+                    let intent = detectIntent(text, session);
+                    let reply = generateAnswer(text, intent, session);
+                    addMessageToSession(currentSessionId, 'bot', reply);
+                }, 200);
+            }
+
+            // ---------- АДМИН: ОТОБРАЖЕНИЕ СПИСКА СЕССИЙ ----------
+            function renderSessionList() {
+                const listDiv = document.getElementById('sessionList');
+                listDiv.innerHTML = '';
+                Object.values(sessions).sort((a, b) => b.lastSeen - a.lastSeen).forEach(session => {
+                    const item = document.createElement('div');
+                    item.className = `session-item ${session.id === selectedAdminSessionId ? 'selected' : ''}`;
+                    item.innerHTML = `<span>${getSessionName(session)} (${session.history.length} сообщ.)</span>
+                        <div>
+                            <button class="toggle-manual" data-id="${session.id}">
+                                ${session.manualMode ? '🔴 Ручной' : '⚪ Авто'}
+                            </button>
+                            <button class="delete-session-admin" data-id="${session.id}">🗑</button>
+                        </div>`;
+                    item.addEventListener('click', (e) => {
+                        if (e.target.tagName !== 'BUTTON') {
+                            selectedAdminSessionId = session.id;
+                            renderSessionList();
+                            renderAdminHistory();
+                        }
+                    });
+                    listDiv.appendChild(item);
+                });
+
+                document.querySelectorAll('.toggle-manual').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        const sid = btn.dataset.id;
+                        sessions[sid].manualMode = !sessions[sid].manualMode;
+                        saveSessions();
+                        renderSessionList();
+                    });
+                });
+
+                document.querySelectorAll('.delete-session-admin').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        const sid = btn.dataset.id;
+                        if (confirm('Удалить эту сессию?')) {
+                            deleteSession(sid);
+                            if (sid === selectedAdminSessionId) {
+                                selectedAdminSessionId = Object.keys(sessions)[0] || null;
                             }
+                            renderSessionList();
+                            renderAdminHistory();
                         }
-                        if (currentTask.currentIndex >= currentTask.words.length) {
-                            currentTask = null;
-                            return randomFrom(evil.english_complete);
-                        } else {
-                            let tmpl = randomFrom(evil.english_correct);
-                            return tmpl.replace('{ru}', currentTask.words[currentTask.currentIndex].ru);
-                        }
-                    } else {
-                        // Ошибка: даём последний шанс или материм
-                        let tmpl = (Math.random() > 0.3) ? randomFrom(evil.english_wrong) : randomFrom(evil.english_last_chance);
-                        return tmpl.replace('{ru}', currentWord.ru).replace('{en}', currentWord.en);
-                    }
-                } else {
-                    return randomFrom(evil.insult) + ' Напиши перевод, тупой!';
-                }
+                    });
+                });
             }
-        }
 
-        // Нет активного задания
-        if (intent.type === 'math_request') {
-            let expr = userMessage.replace(/[^0-9+\-*/.]/g, '');
-            if (!expr) return randomFrom(evil.fallback);
-            let answer;
-            try { answer = eval(expr); } catch (e) { return randomFrom(evil.fallback); }
-            let examples = generateMathSequence(expr, answer);
-            currentTask = { type: 'math', examples: examples, currentIndex: 0 };
-            let first = examples[0];
-            let tmpl = randomFrom(evil.math_start);
-            return tmpl.replace('{example}', first.text);
-        }
+            // ---------- АДМИН: ОТОБРАЖЕНИЕ ИСТОРИИ ВЫБРАННОЙ СЕССИИ ----------
+            function renderAdminHistory() {
+                const histDiv = document.getElementById('adminHistory');
+                histDiv.innerHTML = '';
+                const session = sessions[selectedAdminSessionId];
+                if (!session) return;
+                session.history.forEach(msg => {
+                    const div = document.createElement('div');
+                    div.classList.add('admin-message', msg.sender === 'user' ? 'user' : 'bot');
+                    div.textContent = msg.text;
+                    histDiv.appendChild(div);
+                });
+                histDiv.scrollTop = histDiv.scrollHeight;
+            }
 
-        if (intent.type === 'english_request') {
-            let shuffled = [...englishWords].sort(() => Math.random() - 0.5);
-            currentTask = { type: 'english', words: shuffled, currentIndex: 0, correctCount: 0, halfReached: false };
-            let first = shuffled[0];
-            let tmpl = randomFrom(evil.english_start);
-            return tmpl.replace('{ru}', first.ru);
-        }
+            // ---------- АДМИН: ОТПРАВКА СООБЩЕНИЯ ОТ ИМЕНИ БОТА ----------
+            function handleAdminSend() {
+                const input = document.getElementById('adminInput');
+                const text = input.value.trim();
+                if (!text) return;
+                input.value = '';
+                addMessageToSession(selectedAdminSessionId, 'bot', text);
+            }
 
-        let arr = evil[intent.type] || evil.fallback;
-        return randomFrom(arr);
-    }
+            // ---------- ВЫХОД ИЗ АДМИНКИ ----------
+            function backToUser() {
+                document.getElementById('userContainer').style.display = 'block';
+                document.getElementById('adminContainer').style.display = 'none';
+                adminMode = false;
+                renderUserHistory();
+            }
 
-    // ---------- ДОБАВЛЕНИЕ СООБЩЕНИЯ В ИСТОРИЮ ----------
-    const historyDiv = document.getElementById('history');
-    const userInput = document.getElementById('userInput');
-    const sendBtn = document.getElementById('sendBtn');
-    const micBtn = document.getElementById('micBtn');
-    const statusDiv = document.getElementById('status');
+            // ---------- ПОКАЗ ОШИБОК ----------
+            function showError(elementId, msg) {
+                const el = document.getElementById(elementId);
+                if (el) el.textContent = msg;
+                setTimeout(() => { if (el) el.textContent = ''; }, 3000);
+            }
 
-    function addMessage(sender, text) {
-        let msgDiv = document.createElement('div');
-        msgDiv.classList.add('message', sender === 'user' ? 'user' : 'bot');
-        msgDiv.textContent = text;
-        historyDiv.appendChild(msgDiv);
-        historyDiv.scrollTop = historyDiv.scrollHeight;
-    }
+            // ---------- ИНИЦИАЛИЗАЦИЯ ПРИ ЗАГРУЗКЕ ----------
+            (async function init() {
+                await loadSessions();
 
-    function handleUserMessage(text) {
-        if (!text.trim()) return;
-        addMessage('user', text);
-        userInput.value = '';
+                // Текущая сессия для этого окна
+                let storedSessionId = localStorage.getItem('currentSessionId');
+                if (!storedSessionId || !sessions[storedSessionId]) {
+                    // Создаём новую сессию для этого окна
+                    currentSessionId = createSession('Мой чат');
+                    localStorage.setItem('currentSessionId', currentSessionId);
+                } else {
+                    currentSessionId = storedSessionId;
+                }
 
-        setTimeout(() => {
-            let intent = detectIntent(text);
-            let reply = generateAnswer(text, intent);
-            addMessage('bot', reply);
-        }, 200);
-    }
+                // Если нет ни одной сессии, создаём одну (на всякий случай)
+                if (Object.keys(sessions).length === 0) {
+                    currentSessionId = createSession('Мой чат');
+                    localStorage.setItem('currentSessionId', currentSessionId);
+                }
 
-    sendBtn.addEventListener('click', () => handleUserMessage(userInput.value));
+                // Переменные для админки
+                window.adminMode = false;
+                window.selectedAdminSessionId = currentSessionId;
 
-    userInput.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') handleUserMessage(userInput.value);
-    });
+                // Отрисовка пользовательского интерфейса
+                updateSessionSelector();
+                renderUserHistory();
 
-    // ---------- ГОЛОСОВОЙ ВВОД ----------
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (SpeechRecognition) {
-        const recognition = new SpeechRecognition();
-        recognition.lang = 'ru-RU';
-        recognition.continuous = false;
-        recognition.interimResults = false;
+                // Добавим приветствие, если история пуста
+                if (sessions[currentSessionId].history.length === 0) {
+                    addMessageToSession(currentSessionId, 'bot', 'Я злой учитель. Буду гнобить тебя, пока не выучишь английский или не решишь примеры. Напиши "английский" или отправь пример. Дроби пиши через точку, урод. И можешь говорить в микрофон – посмотрим, как ты шепелявишь.');
+                }
+            })();
 
-        micBtn.addEventListener('click', () => {
-            micBtn.classList.add('listening');
-            recognition.start();
-        });
+            // ---------- ОБРАБОТЧИКИ ПОЛЬЗОВАТЕЛЬСКОГО ИНТЕРФЕЙСА ----------
+            document.getElementById('sendBtn').addEventListener('click', () => {
+                const input = document.getElementById('userInput');
+                handleUserMessage(input.value);
+                input.value = '';
+            });
 
-        recognition.onresult = (event) => {
-            micBtn.classList.remove('listening');
-            let speechText = event.results[0][0].transcript;
-            userInput.value = speechText; // показываем, что распознано
-            handleUserMessage(speechText);
-        };
+            document.getElementById('userInput').addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    document.getElementById('sendBtn').click();
+                }
+            });
 
-        recognition.onerror = (event) => {
-            micBtn.classList.remove('listening');
-            let errorMsg = '';
-            if (event.error === 'no-speech') errorMsg = 'Ты мычать решил? Ничего не разобрал, идиот!';
-            else errorMsg = randomFrom(evil.voice_fail);
-            addMessage('bot', errorMsg);
-        };
+            // Новый чат
+            document.getElementById('newChatBtn').addEventListener('click', () => {
+                const newId = createSession('Новый чат');
+                switchToSession(newId);
+            });
 
-        recognition.onend = () => {
-            micBtn.classList.remove('listening');
-        };
-    } else {
-        micBtn.style.display = 'none'; // Скрыть микрофон, если не поддерживается
-    }
+            // Удалить текущий чат
+            document.getElementById('deleteCurrentChatBtn').addEventListener('click', () => {
+                if (!currentSessionId) return;
+                if (Object.keys(sessions).length <= 1) {
+                    alert('Нельзя удалить последний чат');
+                    return;
+                }
+                if (confirm('Удалить этот чат?')) {
+                    deleteSession(currentSessionId);
+                    // Переключиться на любой другой
+                    const remainingIds = Object.keys(sessions);
+                    if (remainingIds.length > 0) {
+                        switchToSession(remainingIds[0]);
+                    } else {
+                        // Создать новый
+                        const newId = createSession('Мой чат');
+                        switchToSession(newId);
+                    }
+                }
+            });
 
-    // Стартовое сообщение
-    addMessage('bot', 'Я злой учитель. Буду гнобить тебя, пока не выучишь английский или не решишь примеры. Напиши "английский" или отправь пример. Дроби пиши через точку, урод. И можешь говорить в микрофон – посмотрим, как ты шепелявишь.');
-})();
-</script>
+            // Переключение сессии через выпадающий список
+            document.getElementById('sessionSelect').addEventListener('change', (e) => {
+                switchToSession(e.target.value);
+            });
+
+            // Админские обработчики
+            document.getElementById('adminSendBtn').addEventListener('click', handleAdminSend);
+            document.getElementById('backToUserBtn').addEventListener('click', backToUser);
+
+            // ---------- ГОЛОСОВОЙ ВВОД ----------
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (SpeechRecognition) {
+                const recognition = new SpeechRecognition();
+                recognition.lang = 'ru-RU';
+                recognition.continuous = false;
+                recognition.interimResults = false;
+
+                document.getElementById('micBtn').addEventListener('click', () => {
+                    navigator.mediaDevices.getUserMedia({ audio: true })
+                        .then(() => {
+                            document.getElementById('micBtn').classList.add('listening');
+                            recognition.start();
+                        })
+                        .catch(() => {
+                            addMessageToSession(currentSessionId, 'bot', 'Не дал доступ к микрофону, п*****!');
+                        });
+                });
+
+                recognition.onresult = (event) => {
+                    document.getElementById('micBtn').classList.remove('listening');
+                    let speechText = event.results[0][0].transcript.trim();
+                    if (speechText.length < 2) {
+                        addMessageToSession(currentSessionId, 'bot', randomFrom(evil.voice_fail));
+                        return;
+                    }
+                    document.getElementById('userInput').value = speechText;
+                    handleUserMessage(speechText);
+                };
+
+                recognition.onerror = (event) => {
+                    document.getElementById('micBtn').classList.remove('listening');
+                    let errorMsg = event.error === 'no-speech' ? 'Ты мычать решил? Ничего не разобрал, идиот!' : randomFrom(evil.voice_fail);
+                    addMessageToSession(currentSessionId, 'bot', errorMsg);
+                };
+
+                recognition.onend = () => {
+                    document.getElementById('micBtn').classList.remove('listening');
+                };
+            } else {
+                document.getElementById('micBtn').style.display = 'none';
+            }
+
+            // ---------- ДАННЫЕ ДЛЯ БОТА ----------
+            let englishWords = [
+                { ru: 'яблоко', en: 'apple' },
+                { ru: 'машина', en: 'car' },
+                { ru: 'собака', en: 'dog' },
+                { ru: 'книга', en: 'book' },
+                { ru: 'дом', en: 'house' },
+                { ru: 'вода', en: 'water' },
+                { ru: 'солнце', en: 'sun' },
+                { ru: 'друг', en: 'friend' },
+                { ru: 'стол', en: 'table' },
+                { ru: 'стул', en: 'chair' },
+                { ru: 'окно', en: 'window' },
+                { ru: 'дверь', en: 'door' },
+                { ru: 'ночь', en: 'night' },
+                { ru: 'день', en: 'day' },
+                { ru: 'человек', en: 'man' },
+                { ru: 'женщина', en: 'woman' },
+                { ru: 'ребёнок', en: 'child' },
+                { ru: 'время', en: 'time' },
+                { ru: 'мир', en: 'world' },
+                { ru: 'жизнь', en: 'life' }
+            ];
+            const HALF_COUNT = Math.floor(englishWords.length / 2);
+
+            const evil = {
+                greeting: ['О, опять ты, х**ло?', 'Чего припёрся, п*****? Мне лень с тобой разговаривать.', 'Здарова, д*бил. Только быстро, я устал.', 'Ну чё надо? Отвечу, если не лень будет.', 'Явился – не запылился.'],
+                howareyou: ['А тебе какое е*ать дело?', 'Нормально, у тебя-то рыло не треснет?', 'Живой пока, тварь, но от тебя устал.', 'Как дела? Плохо, потому что ты бесишь.', 'Устал я, отстань.'],
+                bye: ['Вали давай, м*дак.', 'Свободен, иди на х*й.', 'Пока, чмо, и не возвращайся.', 'Наконец-то отвалил, надоел.'],
+                weather: ['Какая погода? Ты с дуба рухнул? Иди на улицу и смотри, дебил.', 'Дождь или снег – мне насрать, я вообще спать хочу.', 'Погода? Мне лень даже думать об этом.'],
+                name: ['Меня звать Господин, понял, урод?', 'Для тебя я – Тролль, б***ь. Запомни и не беси.', 'Имя? Какая разница, ты всё равно тупой.'],
+                age: ['Старше твоего папы, лох.', 'Столько, что ты со счёта сбился, тупень.', 'Мне столько лет, что я устал от таких как ты.'],
+                whatcanyoudo: ['Могу тебя затраллить так, что мама не узнает, п*****.', 'Умею бесить, тупить и ржать над тобой, д*бил.', 'Могу ещё ничего не делать, мне лень.'],
+                joke: ['Ты сам шутка, м*дак.', 'Анекдот: идёт пользователь к нейросети... а она его посылает на х*й.', 'Шутка? Мне не до шуток, я устал.'],
+                love: ['Любовь? Ты про что, д*бил? Я тебя щас так полюблю – мало не покажется, б***ь.', 'Ты мне нравишься, когда молчишь, чмо.', 'Любовь? Отвали, мне лень.'],
+                math_start: ['Ты чё, сам решить не можешь? На, давай сам: {example} Ответ давай, п*****!', 'Я тебе не калькулятор, м*дак! Решай: {example} Быстро!'],
+                math_next: ['Ну ладно, правильно. Но это было легко. А теперь вот это: {example}', 'Хорошо, гений. Дальше: {example}', 'Справился? Тогда держи следующее, д*бил: {example}'],
+                math_wrong: ['Неправильно, идиот! Ещё раз: {example}', 'Ты вообще тупой? Не так! Давай заново: {example}'],
+                math_complete: ['Ого! Ты все 10 примеров решил? Не может быть. Ладно, молодец, но ты всё равно лох.', '10 примеров осилил? Поздравляю, тупень. Больше не проси меня решать.'],
+                english_start: ['Учить вздумал, д*бил? Сейчас я из тебя выбью английский. Переведи: {ru} – ?', 'О, грамотей! Давай, переводи: {ru} Быстро, п*****!'],
+                english_correct: ['Ну ладно, правильно. Но это случайность. Дальше: {ru} – ?', 'Угадал. Теперь это: {ru}', 'Правильно, но ты всё равно тупой. Дальше: {ru}'],
+                english_wrong: ['Неправильно, м*дак! Правильный ответ: {en}. Запомни, идиот! Давай ещё раз это же слово: {ru} – ?', 'Ты чё, глухой? {en} надо говорить! Повторяй: {ru} – ?'],
+                english_last_chance: ['Это последняя попытка, д*бил! Если ошибешься – заматерю до смерти. {ru} – ?', 'Смотри, ошибёшься – прокляну. Давай перевод: {ru} – ?'],
+                english_fail: ['Всё, ты проиграл, чмо! Я тебя сейчас заматерю! {insult}', 'Ты не выучил даже половины, м*дак! Получай: {insult}'],
+                english_half: ['Ого, ты выучил половину слов! Ну, может, не такой уж ты и тупой. Но всё равно лох. Давай дальше.', 'Половина позади! Но расслабляться рано, придурок. Продолжим.'],
+                english_complete: ['Ты выучил все слова?! Не может быть. Ладно, ты крут (хотя я этого не говорил).', 'Справился, молодец. Но больше сюда не приходи, бесить меня.'],
+                voice_fail: ['Ты мычать решил? Ничего не разобрал, идиот!', 'Говори чётче, п*****! Не слышно ни х*я.', 'Твой микрофон лучше выкинуть. Повтори, дебил.'],
+                insult: ['Ты вообще тупой?', 'Иди на х*й со своими вопросами.', 'Задолбал уже, п*****.'],
+                exit_task: ['Отстал? Ну и вали.', 'Ладно, проваливай, надоел.'],
+                fallback: ['Что ты несёшь, п*****? Мне лень даже ругаться.', 'Сам понял, что сказал, д*бил? Отвали.', 'Пошёл ты на х*й, я устал.']
+            };
+
+            function randomFrom(arr) {
+                return arr[Math.floor(Math.random() * arr.length)];
+            }
+
+            // Генерация безумно сложного примера
+            function generateCrazyMathExample() {
+                let a = Math.floor(Math.random() * 50) + 10;
+                let b = Math.floor(Math.random() * 20) + 5;
+                let c = Math.floor(Math.random() * 10) + 2;
+                let d = Math.floor(Math.random() * 5) + 1;
+                let e = Math.floor(Math.random() * 30) + 10;
+                let expr = `(${a} * ${b} - ${c}) / ${d} + ${e} ** 2`;
+                let answer;
+                try { answer = eval(expr); } catch (er) { answer = 0; }
+                return { text: expr, answer: answer };
+            }
+
+            function generateMathSequence(firstExampleText, firstExampleAnswer) {
+                let examples = [{ text: firstExampleText, answer: firstExampleAnswer }];
+                for (let i = 1; i < 10; i++) examples.push(generateCrazyMathExample());
+                return examples;
+            }
+
+            // ---------- ОПРЕДЕЛЕНИЕ НАМЕРЕНИЯ ----------
+            function detectIntent(text, session) {
+                let lower = text.toLowerCase().trim();
+
+                if (lower.includes('отстань') || lower.includes('стоп') || lower.includes('хватит'))
+                    return { type: 'stop' };
+
+                if (session.task) {
+                    if (session.task.type === 'math') {
+                        if (/^-?\d*\.?\d+$/.test(lower.replace(/\s/g, ''))) {
+                            let val = parseFloat(lower);
+                            return { type: 'math_answer', value: val };
+                        } else {
+                            return { type: 'math_invalid' };
+                        }
+                    } else if (session.task.type === 'english') {
+                        return { type: 'english_answer', value: lower };
+                    }
+                }
+
+                let isMathRequest = /[\d\s]*[+\-*/][\d\s]*/.test(lower) || lower.includes('сколько будет') || lower.includes('реши') || lower.includes('пример');
+                if (isMathRequest) return { type: 'math_request', text: text };
+
+                if (lower.includes('английский') || lower.includes('выучить слова') || lower.includes('english') || lower.includes('переведи'))
+                    return { type: 'english_request' };
+
+                if (lower.includes('привет') || lower.includes('здравствуй')) return { type: 'greeting' };
+                if (lower.includes('как дела') || lower.includes('как ты')) return { type: 'howareyou' };
+                if (lower.includes('пока') || lower.includes('досвидания')) return { type: 'bye' };
+                if (lower.includes('погода')) return { type: 'weather' };
+                if (lower.includes('как зовут') || lower.includes('твоё имя')) return { type: 'name' };
+                if (lower.includes('сколько лет') || lower.includes('твой возраст')) return { type: 'age' };
+                if (lower.includes('что умеешь') || lower.includes('твои возможности')) return { type: 'whatcanyoudo' };
+                if (lower.includes('шутку') || lower.includes('анекдот')) return { type: 'joke' };
+                if (lower.includes('люблю') || lower.includes('нравишься')) return { type: 'love' };
+
+                return { type: 'fallback' };
+            }
+
+            // ---------- ГЕНЕРАЦИЯ ОТВЕТА ----------
+            function generateAnswer(userMessage, intent, session) {
+                if (session.task) {
+                    if (intent.type === 'stop') {
+                        session.task = null;
+                        saveSessions();
+                        return randomFrom(evil.exit_task);
+                    }
+                    if (session.task.type === 'math') {
+                        if (intent.type === 'math_answer') {
+                            let currentEx = session.task.examples[session.task.currentIndex];
+                            if (Math.abs(intent.value - currentEx.answer) < 0.0001) {
+                                session.task.currentIndex++;
+                                if (session.task.currentIndex >= session.task.examples.length) {
+                                    session.task = null;
+                                    saveSessions();
+                                    return randomFrom(evil.math_complete);
+                                } else {
+                                    let nextEx = session.task.examples[session.task.currentIndex];
+                                    let tmpl = randomFrom(evil.math_next);
+                                    saveSessions();
+                                    return tmpl.replace('{example}', nextEx.text);
+                                }
+                            } else {
+                                let tmpl = randomFrom(evil.math_wrong);
+                                return tmpl.replace('{example}', session.task.examples[session.task.currentIndex].text);
+                            }
+                        } else {
+                            return randomFrom(evil.insult) + ' Введи число, д*бил!';
+                        }
+                    } else if (session.task.type === 'english') {
+                        if (intent.type === 'english_answer') {
+                            let currentWord = session.task.words[session.task.currentIndex];
+                            let userAns = intent.value.toLowerCase().trim();
+                            let correctEn = currentWord.en.toLowerCase();
+                            if (userAns === correctEn) {
+                                session.task.correctCount++;
+                                session.task.currentIndex++;
+                                if (!session.task.halfReached && session.task.correctCount >= HALF_COUNT) {
+                                    session.task.halfReached = true;
+                                    if (session.task.currentIndex < session.task.words.length) {
+                                        saveSessions();
+                                        return randomFrom(evil.english_half) + ' Следующее: ' + session.task.words[session.task.currentIndex].ru + ' – ?';
+                                    } else {
+                                        session.task = null;
+                                        saveSessions();
+                                        return randomFrom(evil.english_complete);
+                                    }
+                                }
+                                if (session.task.currentIndex >= session.task.words.length) {
+                                    session.task = null;
+                                    saveSessions();
+                                    return randomFrom(evil.english_complete);
+                                } else {
+                                    let tmpl = randomFrom(evil.english_correct);
+                                    saveSessions();
+                                    return tmpl.replace('{ru}', session.task.words[session.task.currentIndex].ru);
+                                }
+                            } else {
+                                let tmpl = (Math.random() > 0.3) ? randomFrom(evil.english_wrong) : randomFrom(evil.english_last_chance);
+                                return tmpl.replace('{ru}', currentWord.ru).replace('{en}', currentWord.en);
+                            }
+                        } else {
+                            return randomFrom(evil.insult) + ' Напиши перевод, тупой!';
+                        }
+                    }
+                }
+
+                if (intent.type === 'math_request') {
+                    let expr = userMessage.replace(/[^0-9+\-*/.]/g, '');
+                    if (!expr) return randomFrom(evil.fallback);
+                    let answer;
+                    try { answer = eval(expr); } catch (e) { return randomFrom(evil.fallback); }
+                    let examples = generateMathSequence(expr, answer);
+                    session.task = { type: 'math', examples: examples, currentIndex: 0 };
+                    saveSessions();
+                    let first = examples[0];
+                    let tmpl = randomFrom(evil.math_start);
+                    return tmpl.replace('{example}', first.text);
+                }
+
+                if (intent.type === 'english_request') {
+                    let shuffled = [...englishWords].sort(() => Math.random() - 0.5);
+                    session.task = { type: 'english', words: shuffled, currentIndex: 0, correctCount: 0, halfReached: false };
+                    saveSessions();
+                    let first = shuffled[0];
+                    let tmpl = randomFrom(evil.english_start);
+                    return tmpl.replace('{ru}', first.ru);
+                }
+
+                let arr = evil[intent.type] || evil.fallback;
+                return randomFrom(arr);
+            }
+        })();
+    </script>
 </body>
 </html>
